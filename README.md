@@ -12,3 +12,4 @@ This allows you to access the next and prev file from the preview (stream) direc
 - navigate to the folder with possible files (episodes?)
 - open one of the files
 - two buttons should have been added under the breadcrumps 
+- the main page should now contain a 'reopen last' button
