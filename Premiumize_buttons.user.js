@@ -67,12 +67,15 @@ function createButtons(){
     if (index < files.length-1){
         btn_next.setAttribute("href","/file?id="+files[index+1]);
         container.appendChild(btn_next);
+        document.getElementById('player_html5_api')
+            .addEventListener("ended", function(){location.href = "/file?id="+files[index+1]});
     }
     if (index != 0){
         btn_prev.setAttribute("href","/file?id="+files[index-1]);
         container.appendChild(btn_prev);
     }
     $(container).insertBefore( "div.panel-body" );
+
 }
 function main(){
     console.log('main')
@@ -81,8 +84,9 @@ function main(){
        saveFolderFiles();
     }else if (/downloader/.test(document.URL)){
         waitFor('.btn-default');
-        console.log('main');
+        if (localStorage.getItem("lastFile")){
         insertLastEpButton();
+        }
     }else{
        waitFor("#player_html5_api")
        createButtons();
