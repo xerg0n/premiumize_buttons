@@ -1,5 +1,7 @@
 # premiumize_buttons
-A userscript that adds two buttons to the premiumize me file previewer
+A userscript that adds some buttons for convinience.
+- Two buttons are added to the premiumize me file previewer to play the next or prev episode
+- A button is added to the main page to reopen the last open file
 
 This allows you to access the next and prev file from the preview (stream) directly
 
