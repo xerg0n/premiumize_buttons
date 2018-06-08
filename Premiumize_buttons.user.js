@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
-// @match        https://www.premiumize.me/file*
+// @match        https://www.premiumize.me/*
 // @grant        none
 // ==/UserScript==
 
@@ -32,12 +32,25 @@ function saveFolderFiles(){
     console.log(file_links);
     localStorage.setItem(folderBlob[1], JSON.stringify(file_links));
 }
+
+function insertLastEpButton(){
+    var lastFile = localStorage.getItem("lastFile")
+    var btn_cont = document.createElement('a');
+    document.createElement('span');
+    btn_cont.innerHTML = '<span style="margin-right: 6px;" class="glyphicon glyphicon glyphicon-chevron-right"></span>'
+    +'<span>Reopen last</span>';
+    btn_cont.style.margin = "6px";
+    btn_cont.setAttribute("href","/file?id="+lastFile);
+    btn_cont.className = "btn btn-primary";
+    var container = document.querySelectorAll('[data-reactid=".0.1.0.0.1"]')[0];
+    container.appendChild(btn_cont);
+}
 function createButtons(){
     var currentFolder = $(".breadcrumb > li:nth-last-child(2) > a").attr("href").match(/folder_id=(\S*)/)[1];
-    var currentFile = $(".breadcrumb > li:nth-last-child(1) > a").attr("href").match(/\/file\?id=(\S*)/)[1];
+    var currentFile = document.URL.match(/\/file\?id=(\S*)/)[1];
     var files = JSON.parse(localStorage.getItem(currentFolder));
     //$(".panel-title").text().match(/S(\d\d)E(\d\d)/)
-    console.log(files);
+    localStorage.setItem("lastFile", currentFile);
 
     var index = files.indexOf(currentFile);
 
@@ -62,11 +75,16 @@ function createButtons(){
     $(container).insertBefore( "div.panel-body" );
 }
 function main(){
+    console.log('main')
     if (/folder_id=/.test(document.URL)){
-        waitFor(".glyphicon-file")
+        waitFor(".glyphicon-file");
        saveFolderFiles();
+    }else if (/downloader/.test(document.URL)){
+        waitFor('.btn-default');
+        console.log('main');
+        insertLastEpButton();
     }else{
-        waitFor("#player_html5_api")
+       waitFor("#player_html5_api")
        createButtons();
     }
 }
