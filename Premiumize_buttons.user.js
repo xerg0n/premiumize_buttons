@@ -57,12 +57,14 @@ function createButtons(){
     var btn_prev = document.createElement('a');
     var btn_next = document.createElement('a');
     var container = document.createElement('div');
-    container.style.height = "20px";
+    //container.style.height = "20px";
     btn_next.className = "btn btn-primary";
     btn_prev.className = "btn btn-primary";
     btn_next.style.float = "right";
     btn_next.innerText = "Next Episode"
     btn_prev.innerText = "Prev Episode"
+
+
 
     if (index < files.length-1){
         btn_next.setAttribute("href","/file?id="+files[index+1]);
@@ -74,7 +76,10 @@ function createButtons(){
         btn_prev.setAttribute("href","/file?id="+files[index-1]);
         container.appendChild(btn_prev);
     }
-    $(container).insertBefore( "div.panel-body" );
+    var mainContainer = document.querySelector("div.container");
+    mainContainer.insertBefore(container, mainContainer.children[2]);
+
+    //$(container).insertBefore( "div.panel-body" );
 
 }
 function main(){
