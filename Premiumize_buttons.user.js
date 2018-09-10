@@ -16,7 +16,7 @@ main();
 
 function waitFor(selector){
     var checkExist = setInterval(function() {
-   if ($('.glyphicon-file').length) {
+   if (document.getElementsByClassName('.glyphicon-file').length) {
       main();
       clearInterval(checkExist);
    }
@@ -25,7 +25,7 @@ function waitFor(selector){
 
 function saveFolderFiles(){
      var file_links = [];
-     $(".glyphicon-file").siblings("a").each( function(){var lnk = this.getAttribute("href");
+     document.getElementsByClassName(".glyphicon-file").siblings("a").each( function(){var lnk = this.getAttribute("href");
                                                             file_links.push(lnk.replace("/file?id=",""))})
     var folderBlob = document.URL.match(/folder_id=(\S*)/);
     console.log(folderBlob[1]);
@@ -46,7 +46,8 @@ function insertLastEpButton(){
     container.appendChild(btn_cont);
 }
 function createButtons(){
-    var currentFolder = $(".breadcrumb > li:nth-last-child(2) > a").attr("href").match(/folder_id=(\S*)/)[1];
+    var breadcrumb = document.getElementsByClassName('breadcrumb')[0]
+    var currentFolder = breadcrumb.childNodes[breadcrumb.childNodes.length-4].firstChild.getAttribute("href").match(/folder_id=(\S*)/)[1];
     var currentFile = document.URL.match(/\/file\?id=(\S*)/)[1];
     var files = JSON.parse(localStorage.getItem(currentFolder));
     //$(".panel-title").text().match(/S(\d\d)E(\d\d)/)
@@ -54,10 +55,11 @@ function createButtons(){
 
     var index = files.indexOf(currentFile);
 
+    var main_container = document.getElementsByClassName('container')[0];
     var btn_prev = document.createElement('a');
     var btn_next = document.createElement('a');
     var container = document.createElement('div');
-    container.style.height = "20px";
+    container.style.height = "40px";
     btn_next.className = "btn btn-primary";
     btn_prev.className = "btn btn-primary";
     btn_next.style.float = "right";
@@ -74,7 +76,7 @@ function createButtons(){
         btn_prev.setAttribute("href","/file?id="+files[index-1]);
         container.appendChild(btn_prev);
     }
-    $(container).insertBefore( "div.panel-body" );
+    main_container.insertBefore(container, main_container.childNodes[4]);
 
 }
 function main(){
