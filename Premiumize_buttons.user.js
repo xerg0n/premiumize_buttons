@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -11,26 +11,40 @@
 (function() {
     'use strict';
 main();
-
 })();
 
-function waitFor(selector){
-    var checkExist = setInterval(function() {
-   if (document.getElementsByClassName('.glyphicon-file').length) {
-      main();
-      clearInterval(checkExist);
-   }
-}, 100);
+async function waitFor(sel){
+    while(!document.querySelector(sel)) {
+        await new Promise(r => setTimeout(r, 500));
+    }
+}
+
+function waitForClass(selector){
+    new Promise((r, j)=>{
+   if (document.getElementsByClassName(selector).length) {
+       console.log("found");
+       r();
+    }})
 }
 
 function saveFolderFiles(){
-     var file_links = [];
-     document.getElementsByClassName(".glyphicon-file").siblings("a").each( function(){var lnk = this.getAttribute("href");
-                                                            file_links.push(lnk.replace("/file?id=",""))})
-    var folderBlob = document.URL.match(/folder_id=(\S*)/);
-    console.log(folderBlob[1]);
+    var file_links = [];
+    var folder_id = document.URL.match(/folder_id=(\S*)/)[1];
+    Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
+        var file = {id: null, name: null, folder_id: folder_id};
+        var element = el.parentNode.children[2];
+        file.id = element.getAttribute('href').replace("/file?id=","");
+        file.name = element.text;
+        file_links.push(file);
+    })
+    console.log(folder_id);
     console.log(file_links);
-    localStorage.setItem(folderBlob[1], JSON.stringify(file_links));
+    var files = JSON.parse(localStorage.getItem('files'));
+    if (files == null){
+        files = [];
+    }
+    var new_file_list = files.concat(file_links);
+    localStorage.setItem('files', JSON.stringify(new_file_list));
 }
 
 function insertLastEpButton(){
@@ -47,13 +61,14 @@ function insertLastEpButton(){
 }
 function createButtons(){
     var breadcrumb = document.getElementsByClassName('breadcrumb')[0]
-    var currentFolder = breadcrumb.childNodes[breadcrumb.childNodes.length-4].firstChild.getAttribute("href").match(/folder_id=(\S*)/)[1];
+    var current_folder = breadcrumb.childNodes[breadcrumb.childNodes.length-4].firstChild.getAttribute("href").match(/folder_id=(\S*)/)[1];
     var currentFile = document.URL.match(/\/file\?id=(\S*)/)[1];
-    var files = JSON.parse(localStorage.getItem(currentFolder));
+    var all_files = JSON.parse(localStorage.getItem('files'));
+    var files = all_files.filter(file => file.folder_id == current_folder);
     //$(".panel-title").text().match(/S(\d\d)E(\d\d)/)
     localStorage.setItem("lastFile", currentFile);
 
-    var index = files.indexOf(currentFile);
+    var index = files.findIndex((file) => file.id == currentFile);
 
     var main_container = document.getElementsByClassName('container')[0];
     var btn_prev = document.createElement('a');
@@ -67,30 +82,29 @@ function createButtons(){
     btn_prev.innerText = "Prev Episode"
 
     if (index < files.length-1){
-        btn_next.setAttribute("href","/file?id="+files[index+1]);
+        btn_next.setAttribute("href","/file?id="+files[index+1].id);
+        btn_next.title = files[index+1].name;
         container.appendChild(btn_next);
         document.getElementById('player_html5_api')
-            .addEventListener("ended", function(){location.href = "/file?id="+files[index+1]});
+            .addEventListener("ended", function(){location.href = "/file?id="+files[index+1].id});
     }
     if (index != 0){
-        btn_prev.setAttribute("href","/file?id="+files[index-1]);
+        btn_prev.setAttribute("href","/file?id="+files[index-1].id);
+        btn_prev.title = files[index-1].name;
         container.appendChild(btn_prev);
     }
     main_container.insertBefore(container, main_container.childNodes[4]);
 
 }
 function main(){
-    console.log('main')
     if (/folder_id=/.test(document.URL)){
-        waitFor(".glyphicon-file");
-       saveFolderFiles();
+        waitFor(".glyphicon-file").then(saveFolderFiles);
     }else if (/downloader/.test(document.URL)){
-        waitFor('.btn-default');
         if (localStorage.getItem("lastFile")){
-        insertLastEpButton();
+            console.log('inserting last');
+            waitFor(".btn-primary").then(insertLastEpButton);
         }
     }else{
-       waitFor("#player_html5_api")
-       createButtons();
+       waitFor(".vjs-control-bar").then(createButtons);
     }
 }
