@@ -1,4 +1,4 @@
-# premiumize_buttons
+# Premiumize.me Fileviewer Improvements
 A userscript that adds some convinience functions to the premiumize.me file (pre)viewer. This is especially useful when streaming series directly.
 ## Features
 - added buttons to the premiumize me file previewer to play the next or prev episode
