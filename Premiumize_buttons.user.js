@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -62,13 +62,18 @@ function insertLastEpButton(){
 function createButtons(){
     var breadcrumb = document.getElementsByClassName('breadcrumb')[0]
     var current_folder = breadcrumb.childNodes[breadcrumb.childNodes.length-4].firstChild.getAttribute("href").match(/folder_id=(\S*)/)[1];
-    var currentFile = document.URL.match(/\/file\?id=(\S*)/)[1];
+    var current_file_id = document.URL.match(/\/file\?id=(\S*)/)[1];
     var all_files = JSON.parse(localStorage.getItem('files'));
     var files = all_files.filter(file => file.folder_id == current_folder);
+    var index = files.findIndex((file) => file.id == current_file_id);
+    var video_player = document.getElementById('player_html5_api');
+    var current_file = files[index];
     //$(".panel-title").text().match(/S(\d\d)E(\d\d)/)
-    localStorage.setItem("lastFile", currentFile);
+    localStorage.setItem("lastFile", current_file_id);
 
-    var index = files.findIndex((file) => file.id == currentFile);
+    if (current_file.time){
+     video_player.currentTime = current_file.time;
+    }
 
     var main_container = document.getElementsByClassName('container')[0];
     var btn_prev = document.createElement('a');
@@ -85,16 +90,15 @@ function createButtons(){
         btn_next.setAttribute("href","/file?id="+files[index+1].id);
         btn_next.title = files[index+1].name;
         container.appendChild(btn_next);
-        document.getElementById('player_html5_api')
-            .addEventListener("ended", function(){location.href = "/file?id="+files[index+1].id});
+        video_player.addEventListener("ended", function(){location.href = "/file?id="+files[index+1].id});
     }
     if (index != 0){
         btn_prev.setAttribute("href","/file?id="+files[index-1].id);
         btn_prev.title = files[index-1].name;
         container.appendChild(btn_prev);
     }
+    video_player.addEventListener("timeupdate", function(){files[index].time = video_player.currentTime; localStorage.setItem('files', JSON.stringify(files));});
     main_container.insertBefore(container, main_container.childNodes[4]);
-
 }
 function main(){
     if (/folder_id=/.test(document.URL)){
