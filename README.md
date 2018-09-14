@@ -8,7 +8,7 @@ A userscript that adds some convinience functions to the premiumize.me file (pre
 
 ## Installation
 - Install Tempermonkey for [firefox](https://tampermonkey.net/?ext=dhdg&browser=firefox) or [chrome](https://tampermonkey.net/?ext=dhdg&browser=chrome)
-- open the Premiumize_buttons.user.js file in raw mode (or click [here](https://github.com/xerg0n/premiumize_buttons/raw/master/Premiumize_buttons.user.js)
+- open the Premiumize_buttons.user.js file in raw mode (or click [here](https://github.com/xerg0n/premiumize_buttons/raw/master/Premiumize_buttons.user.js))
 - confirm installation
 - done :)
 
