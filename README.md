@@ -7,7 +7,7 @@ A userscript that adds some convinience functions to the premiumize.me file (pre
 - save current time and resume on time if file is reopend
 
 ## Installation
-- Install Tempermonkey for [chrome](https://tampermonkey.net/?ext=dhdg&browser=firefox) or [firefox](https://tampermonkey.net/?ext=dhdg&browser=chrome)
+- Install Tempermonkey for [firefox](https://tampermonkey.net/?ext=dhdg&browser=firefox) or [chrome](https://tampermonkey.net/?ext=dhdg&browser=chrome)
 - open the Premiumize_buttons.user.js file in raw mode
 - confirm installation
 - done :)
