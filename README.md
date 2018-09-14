@@ -6,10 +6,11 @@ A userscript that adds some convinience functions to the premiumize.me file (pre
 - Autoplay next video if available
 - save current time and resume on time if file is reopend
 
-## Install
-- Install tempermonkey 
+## Installation
+- Install Tempermonkey for [chrome](https://tampermonkey.net/?ext=dhdg&browser=firefox) or [firefox](https://tampermonkey.net/?ext=dhdg&browser=chrome)
 - open the Premiumize_buttons.user.js file in raw mode
 - confirm installation
+- done :)
 
 ## Usage
 - navigate to the folder with possible files (episodes?)
