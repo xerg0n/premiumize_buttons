@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.42
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -179,21 +179,51 @@ function makeButton(text, file){
     return btn
 }
 
+
+class Player {
+    init(){
+        this.current_file = store.getFile(parser.getFolderId(), parser.getCurrentFileId())
+        this.attach()
+        this.restoreTime()
+        this.registerListeners()
+        this.flag = true
+    }
+    attach(){
+       this.player = parser.getPlayer();
+         console.log(this.player)
+    }
+    registerListeners(){
+        this.player.addEventListener("timeupdate", this.timechange);
+    }
+    timechange(){
+        var time = player.player.currentTime
+        player.player.current_file.time = time
+        store.updateFile(player.current_file);
+    }
+    restoreTime(){
+        if (this.current_file.time){
+            this.player.currentTime = this.current_file.time;
+        }
+    }
+    registerNext(file){
+        this.player.addEventListener("ended", function(){
+            location.href = "/file?id="+file.id
+
+            // set time to 0
+            player.player.current_file.time = 0
+            store.updateFile(player.current_file);
+        });
+    }
+}
+
 function playback_page(){
-    var video_player = parser.getPlayer();
+    player.init();
     var current_file = store.getFile(parser.getFolderId(), parser.getCurrentFileId())
 
     store.setLastFile(current_file);
 
     //resume playback and register event listener
 
-    if (current_file.time){
-     video_player.currentTime = current_file.time;
-    }
-    video_player.addEventListener("timeupdate", function(){
-        current_file.time = video_player.currentTime
-        store.updateFile(current_file);
-    });
 
     // button container
     var container = document.createElement('div');
@@ -208,7 +238,7 @@ function playback_page(){
         var btn_next = makeButton("Next Episode", next_file)
         btn_next.style.float = "right";
         container.appendChild(btn_next);
-        video_player.addEventListener("ended", function(){location.href = "/file?id="+next_file.id});
+        player.registerNext(next_file);
     }
     if (prev_file){
         var btn_prev = makeButton("Prev Episode", prev_file)
@@ -232,4 +262,5 @@ function main(){
 }
 var parser = new Parser();
 var store = new Store();
+var player = new Player();
 main();
