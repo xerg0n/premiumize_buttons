@@ -18,6 +18,11 @@ A userscript that adds some convinience functions to the premiumize.me file (pre
 - the main page should now contain a 'reopen last' button
 
 ## Changelog
+### 0.4
+* code cleanup
+* moved db to sets
+* added time zero when video ended
+
 ### 0.3
 * added function to save the current playback time
 * added auto seek to last time if exists
