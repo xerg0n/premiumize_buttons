@@ -1,17 +1,131 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
 // @grant        none
 // ==/UserScript==
 
-(function() {
-    'use strict';
-main();
-})();
+class Store {
+    constructor() {
+        this.key_main = "folders"
+        this.key_last = "lastFile"
+
+        var whitelist_items = [
+        ".mkv$",
+        ".avi$",
+        ".mov$",
+        ".wmv$",
+        ".mpeg$"
+        ];
+        this.whitelist = new RegExp(whitelist_items.join("|"), "i");
+    }
+
+    setLastFile(file){
+        localStorage.setItem(this.key_last, file.id);
+    }
+    getLastFile(){
+        var id = localStorage.getItem(this.key_last)
+        return this.getFileFromAll(id);
+    }
+    addFolder(folder_id, files) {
+        var all_files = this.getAllFiles()
+        all_files[folder_id] = files
+        this.setFiles(all_files)
+    }
+
+    getFolder(folder_id, filter=this.whitelist) {
+        if (!filter){
+            return this.getAllFiles()[folder_id];
+        }else{
+            return this.getAllFiles()[folder_id].filter(file => file.name.match(this.whitelist));
+        }
+    }
+
+    getFile(folder_id, id) {
+        return this.getAllFiles()[folder_id].filter(file => file.id == id)[0];
+    }
+    getFileFromAll(fileid) {
+        var files = this.getAllFiles();
+                        console.log(files)
+        for (var key in files) {
+            if (files.hasOwnProperty(key)) {
+                var id = files[key].findIndex((db_file) => db_file.id == fileid);
+                if (id){
+                    return files[key][id];
+                }
+            }
+        }
+    }
+
+    getNext(folder_id, id, filter=this.whitelist) {
+        var folder = this.getFolder(folder_id, filter)
+        var index = folder.findIndex((file) => file.id == id);
+        if (index < folder.length-1){
+            return folder[index+1]
+        }else{
+            return null
+        }
+    }
+
+    getPrev(folder_id, id, filter=this.whitelist) {
+        var folder = this.getFolder(folder_id, filter=true)
+        var index = folder.findIndex((file) => file.id == id);
+        if (index != 0){
+            return folder[index-1]
+        }else{
+            return null
+        }
+    }
+    getAllFiles(){
+        var files = JSON.parse(localStorage.getItem(this.key_main));
+        if (files == null){
+            files = {};
+        }
+        return files
+    }
+    setFiles(files){
+        var ser_files = JSON.stringify(files);
+        localStorage.setItem(this.key_main, ser_files)
+    }
+    updateFile(file){
+        var files = this.getAllFiles()
+        for (var key in files) {
+            if (files.hasOwnProperty(key)) {
+                var id = files[key].findIndex((db_file) => db_file.id == file.id);
+                if (id){
+                    files[key][id] = file;
+                    this.setFiles(files);
+                    return
+                }
+            }
+        }
+    }
+}
+
+class Parser {
+    getCurrentFileId(){
+        return document.URL.match(/\/file\?id=(\S*)/)[1];
+    }
+
+    getFolderId(){
+        var breadcrumb = document.getElementsByClassName('breadcrumb')[0]
+        var id = breadcrumb.childNodes[breadcrumb.childNodes.length-4].firstChild.getAttribute("href")
+            .match(/folder_id=(\S*)/)[1];
+
+        return id
+    }
+    getFolderIdFromUri(){
+        return document.URL.match(/folder_id=(\S*)/)[1];
+    }
+    getPlayer(){
+        return document.getElementById('player_html5_api');
+    }
+
+
+}
 
 async function waitFor(sel){
     while(!document.querySelector(sel)) {
@@ -29,7 +143,8 @@ function waitForClass(selector){
 
 function saveFolderFiles(){
     var file_links = [];
-    var folder_id = document.URL.match(/folder_id=(\S*)/)[1];
+    var folder_id = parser.getFolderIdFromUri();
+
     Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
         var file = {id: null, name: null, folder_id: folder_id};
         var element = el.parentNode.children[2];
@@ -37,67 +152,70 @@ function saveFolderFiles(){
         file.name = element.text;
         file_links.push(file);
     })
-    console.log(folder_id);
-    console.log(file_links);
-    var files = JSON.parse(localStorage.getItem('files'));
-    if (files == null){
-        files = [];
-    }
-    var new_file_list = files.concat(file_links);
-    localStorage.setItem('files', JSON.stringify(new_file_list));
+    store.addFolder(folder_id, file_links)
 }
 
+
+
 function insertLastEpButton(){
-    var lastFile = localStorage.getItem("lastFile")
-    var btn_cont = document.createElement('a');
-    document.createElement('span');
+    var lastFile = store.getLastFile();
+    var btn_cont = makeButton("Reopen last", lastFile);
+
+    console.log(lastFile)
     btn_cont.innerHTML = '<span style="margin-right: 6px;" class="glyphicon glyphicon glyphicon-chevron-right"></span>'
     +'<span>Reopen last</span>';
     btn_cont.style.margin = "6px";
-    btn_cont.setAttribute("href","/file?id="+lastFile);
-    btn_cont.className = "btn btn-primary";
+
     var container = document.querySelectorAll('[data-reactid=".0.1.0"]')[0];
     container.appendChild(btn_cont);
 }
-function createButtons(){
-    var breadcrumb = document.getElementsByClassName('breadcrumb')[0]
-    var current_folder = breadcrumb.childNodes[breadcrumb.childNodes.length-4].firstChild.getAttribute("href").match(/folder_id=(\S*)/)[1];
-    var current_file_id = document.URL.match(/\/file\?id=(\S*)/)[1];
-    var all_files = JSON.parse(localStorage.getItem('files'));
-    var files = all_files.filter(file => file.folder_id == current_folder);
-    var index = files.findIndex((file) => file.id == current_file_id);
-    var video_player = document.getElementById('player_html5_api');
-    var current_file = files[index];
-    //$(".panel-title").text().match(/S(\d\d)E(\d\d)/)
-    localStorage.setItem("lastFile", current_file_id);
+
+function makeButton(text, file){
+    var btn = document.createElement('a');
+    btn.className = "btn btn-primary";
+    btn.innerText = text
+    btn.setAttribute("href","/file?id="+file.id);
+    btn.title = file.name;
+    return btn
+}
+
+function playback_page(){
+    var video_player = parser.getPlayer();
+    var current_file = store.getFile(parser.getFolderId(), parser.getCurrentFileId())
+
+    store.setLastFile(current_file);
+
+    //resume playback and register event listener
 
     if (current_file.time){
      video_player.currentTime = current_file.time;
     }
+    video_player.addEventListener("timeupdate", function(){
+        current_file.time = video_player.currentTime
+        store.updateFile(current_file);
+    });
 
-    var main_container = document.getElementsByClassName('container')[0];
-    var btn_prev = document.createElement('a');
-    var btn_next = document.createElement('a');
+    // button container
     var container = document.createElement('div');
     container.style.height = "40px";
-    btn_next.className = "btn btn-primary";
-    btn_prev.className = "btn btn-primary";
-    btn_next.style.float = "right";
-    btn_next.innerText = "Next Episode"
-    btn_prev.innerText = "Prev Episode"
 
-    if (index < files.length-1){
-        btn_next.setAttribute("href","/file?id="+files[index+1].id);
-        btn_next.title = files[index+1].name;
+    var next_file = store.getNext(parser.getFolderId(), parser.getCurrentFileId())
+    var prev_file = store.getPrev(parser.getFolderId(), parser.getCurrentFileId())
+
+
+    // add buttons
+    if (next_file){
+        var btn_next = makeButton("Next Episode", next_file)
+        btn_next.style.float = "right";
         container.appendChild(btn_next);
-        video_player.addEventListener("ended", function(){location.href = "/file?id="+files[index+1].id});
+        video_player.addEventListener("ended", function(){location.href = "/file?id="+next_file.id});
     }
-    if (index != 0){
-        btn_prev.setAttribute("href","/file?id="+files[index-1].id);
-        btn_prev.title = files[index-1].name;
+    if (prev_file){
+        var btn_prev = makeButton("Prev Episode", prev_file)
         container.appendChild(btn_prev);
     }
-    video_player.addEventListener("timeupdate", function(){files[index].time = video_player.currentTime; localStorage.setItem('files', JSON.stringify(files));});
+
+    var main_container = document.getElementsByClassName('container')[0];
     main_container.insertBefore(container, main_container.childNodes[4]);
 }
 function main(){
@@ -109,6 +227,9 @@ function main(){
             waitFor(".btn-primary").then(insertLastEpButton);
         }
     }else{
-       waitFor(".vjs-control-bar").then(createButtons);
+       waitFor(".vjs-control-bar").then(playback_page);
     }
 }
+var parser = new Parser();
+var store = new Store();
+main();
