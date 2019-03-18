@@ -12,7 +12,8 @@ class Store {
     constructor() {
         this.key_main = "folders"
         this.key_last = "lastFile"
-
+    
+        // used to filter files that are supposed to be opend
         var whitelist_items = [
         ".mkv$",
         ".avi$",
