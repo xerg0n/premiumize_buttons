@@ -205,13 +205,6 @@ async function waitFor(sel){
     }
 }
 
-function waitForClass(selector){
-    new Promise((r, j)=>{
-   if (document.getElementsByClassName(selector).length) {
-       r();
-    }})
-}
-
 
 function makeButton(text, file){
     var btn = document.createElement('a');
