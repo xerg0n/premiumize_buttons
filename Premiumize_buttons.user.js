@@ -19,6 +19,7 @@ class Store {
         ".avi$",
         ".mov$",
         ".wmv$",
+        ".m4v$",
         ".mpeg$"
         ];
         this.whitelist = new RegExp(whitelist_items.join("|"), "i");
