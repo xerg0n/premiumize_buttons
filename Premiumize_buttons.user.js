@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.7
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -12,12 +12,13 @@ class Store {
     constructor() {
         this.key_main = "folders"
         this.key_last = "lastFile"
-    
+
         // used to filter files that are supposed to be opend
         var whitelist_items = [
         ".mkv$",
         ".avi$",
         ".mov$",
+        ".mp4$",
         ".wmv$",
         ".m4v$",
         ".mpeg$"
@@ -42,7 +43,9 @@ class Store {
             'name': 'test',
             'url': 'http://test.com'
         }
-        this.setFiles(all_folders)
+        if (!(folder_id in all_folders)){
+            this.setFiles(all_folders)
+        }
     }
 
     getFolder(folder_id) {
@@ -113,7 +116,7 @@ class Store {
         for (var key in all_folders) {
             if (all_folders.hasOwnProperty(key)) {
                 var id = all_folders[key].files.findIndex((db_file) => db_file.id == file.id);
-                if (id){
+                if (id > -1){
                     all_folders[key].files[id] = file;
                     this.setFiles(all_folders);
                     return
@@ -135,16 +138,19 @@ class Player {
         this.flag = true
     }
     attach(){
-       this.player = parser.getPlayer();
-         console.log(this.player)
+        this.player = parser.getPlayer();
+        this.playerElement = parser.getPlayerElement()
     }
     registerListeners(){
-        this.player.addEventListener("timeupdate", this.timechange);
+        this.playerElement.addEventListener("timeupdate", this.timechange);
     }
     timechange(){
-        var time = player.player.currentTime
-        player.player.current_file.time = time
-        store.updateFile(player.current_file);
+        var time = parser.getPlayer().currentTime
+        player_container.current_file.time = time
+        if (parser.getPlayer().remainingTime() < 120){
+            player_container.current_file.finished = true
+        }
+        store.updateFile(player_container.current_file);
     }
     restoreTime(){
         if (this.current_file.time){
@@ -152,12 +158,13 @@ class Player {
         }
     }
     registerNext(file){
-        this.player.addEventListener("ended", function(){
+        this.playerElement.addEventListener("ended", function(){
             location.href = "/file?id="+file.id
 
             // set time to 0
-            player.player.current_file.time = 0
-            store.updateFile(player.current_file);
+            player_container.current_file.time = 0
+            player_container.current_file.finished = true
+            store.updateFile(player_container.current_file);
         });
     }
 }
@@ -181,15 +188,33 @@ class Parser {
     getFolderIdFromUri(){
         return document.URL.match(/folder_id=(\S*)/)[1];
     }
-
-    getPlayer(){
+    getPlayerElement(){
         return document.getElementById('player_html5_api');
     }
+    getPlayer(){
+        return player;
+    }
+
+    markFilesFinished(folder_id){
+        Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
+            var element = el.parentNode.children[2]
+            var id = element.getAttribute('href').replace("/file?id=","");
+            if(store.getFile(id).finished){
+                console.log('marking')
+                element.style.textDecoration = 'line-through'
+            }
+         })
+   }
 
     getFileLinks(folder_id){
         var file_links = [];
         Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
-            var file = {id: null, name: null, folder_id: folder_id};
+            var file = {
+                name: null,
+                id: null,
+                time: 0,
+                folder_id: folder_id
+            };
             var element = el.parentNode.children[2];
             file.id = element.getAttribute('href').replace("/file?id=","");
             file.name = element.text;
@@ -223,6 +248,7 @@ function makeButton(text, file){
 
 function folder_page(){
     var folder_id = parser.getFolderIdFromUri();
+    parser.markFilesFinished()
     var file_links = parser.getFileLinks(folder_id);
     store.addFolder(folder_id, file_links)
 }
@@ -240,7 +266,7 @@ function downloader_page(){
 }
 
 function playback_page(){
-    player.init();
+    player_container.init();
     var current_file = store.getFile(parser.getCurrentFileId(), parser.getFolderId())
 
     store.setLastFile(current_file);
@@ -261,7 +287,7 @@ function playback_page(){
         var btn_next = makeButton("Next Episode", next_file)
         btn_next.style.float = "right";
         container.appendChild(btn_next);
-        player.registerNext(next_file);
+        player_container.registerNext(next_file);
     }
     if (prev_file){
         var btn_prev = makeButton("Prev Episode", prev_file)
@@ -285,5 +311,5 @@ function main(){
 }
 var parser = new Parser();
 var store = new Store();
-var player = new Player();
+var player_container = new Player();
 main();
