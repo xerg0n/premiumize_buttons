@@ -1,10 +1,14 @@
-# Premiumize.me Fileviewer Improvements
-A userscript that adds some convinience functions to the premiumize.me file (pre)viewer. This is especially useful when streaming series directly.
+# Premiumize.me File Viewer Improvements
+A userscript that adds some convinience functions to the premiumize.me file viewer. This is especially useful when streaming series directly.
 ## Features
-- adds buttons to the premiumize.me file previewer to play the next or prev episode
+- adds buttons to the premiumize.me file viewer to play the next or previous episode
 - adds button to the main page to reopen the last open file
+- labels watched episodes
 - Autoplay next video if available
 - save current time and resume on time if file is reopend
+
+### planned
+  - use greasemoney to save and syn storage
 
 ## Installation
 - Install Tempermonkey for [firefox](https://tampermonkey.net/?ext=dhdg&browser=firefox) or [chrome](https://tampermonkey.net/?ext=dhdg&browser=chrome)
