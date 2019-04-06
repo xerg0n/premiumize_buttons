@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.70
+// @version      0.75
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -37,7 +37,7 @@ class Store {
     hasFolder(folder_id){
         return (folder_id in this.getAllFolders())
     }
-    addFolder(folder_id, files) {
+    addFolderOld(folder_id, files) {
         var all_folders = this.getAllFolders()
 
         if (!this.hasFolder(folder_id)){
@@ -53,13 +53,22 @@ class Store {
             console.log('folder already saved')
         }
     }
-
+    addFolder(folder){
+        var all_folders = this.getAllFolders()
+        if (!this.hasFolder(folder.id)){
+            all_folders[folder.id] = folder
+            this.setFiles(all_folders)
+        }else{
+            console.log('folder already saved')
+        }
+    }
     getFolder(folder_id) {
         return this.getAllFolders()[folder_id];
     }
 
     getFile(id, folder_id=null){
         if (folder_id){
+            console.log(this.getAllFolders()[folder_id])
             return this.getAllFolders()[folder_id].files.filter(file => file.id == id)[0];
         }else{
             return this.getFileFromAll(id);
@@ -136,23 +145,21 @@ class Store {
 Player wrapper
 **/
 class Player {
-    init(){
+    constructor(){
         this.parser = new Parser()
+        console.log(this.parser.getFolderId())
         this.current_file = store.getFile(this.parser.getCurrentFileId(), this.parser.getFolderId())
-        this.attach()
-        this.restoreTime()
-        this.registerListeners()
-        this.flag = true
-    }
-    attach(){
         this.player = this.parser.getPlayer();
         this.playerElement = this.parser.getPlayerElement()
+        this.restoreTime()
+        this.registerListeners()
     }
     registerListeners(){
-        this.playerElement.addEventListener("timeupdate", this.timechange.bind(this),true);
+        this.playerElement.addEventListener("timeupdate", this.timechange.bind(this), true);
         this.playerElement.addEventListener("ended", this.ended.bind(this),true);
     }
     timechange(){
+        console.log('[Player] timeupdate')
         var time = this.player.currentTime()
         this.current_file.time = time
         if (this.player.remainingTime() < 120){
@@ -187,10 +194,12 @@ class Parser {
     getCurrentFileId(){
         return document.URL.match(/\/file\?id=(\S*)/)[1];
     }
-
+    getBreadcrumb(){
+        return document.getElementsByClassName('breadcrumb')[0].childNodes
+    }
     getFolderId(){
-        var breadcrumb = document.getElementsByClassName('breadcrumb')[0]
-        var id = breadcrumb.childNodes[breadcrumb.childNodes.length-4].firstChild.getAttribute("href")
+        var breadcrumb = this.getBreadcrumb()
+        var id = breadcrumb[breadcrumb.length-4].firstChild.getAttribute("href")
             .match(/folder_id=(\S*)/)[1];
 
         return id
@@ -206,11 +215,12 @@ class Parser {
         return player;
     }
 
-    markFilesFinished(folder_id){
+    markFilesFinished(finished_ids){
+        console.log(finished_ids)
         Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
             var element = el.parentNode.children[2]
             var id = element.getAttribute('href').replace("/file?id=","");
-            if(store.getFile(id).finished){
+            if(finished_ids.has(id)){
                 element.style.textDecoration = 'line-through'
             }
          })
@@ -231,6 +241,17 @@ class Parser {
             file_links.push(file);
         })
         return file_links;
+    }
+    getFolder(){
+        var id = this.getFolderIdFromUri();
+        var bread = this.getBreadcrumb()
+        var folder = {
+            files: this.getFileLinks(id),
+            name: bread[bread.length-1].innerText,
+            url: bread[bread.length-1].baseURI,
+            id: id,
+        }
+        return folder
     }
     currentPage(){
         if (/folder_id=/.test(document.URL)){
@@ -274,11 +295,13 @@ class Pages{
 
     folder(){
         var folder_id = this.parser.getFolderIdFromUri();
-        if (store.getFolder(folder_id) != null){
-            this.parser.markFilesFinished()
+        if (store.hasFolder(folder_id)){
+            var ids = new Set()
+            store.getFolder(folder_id).files.forEach((f) => f.finished && ids.add(f.id))
+            this.parser.markFilesFinished(ids)
         }else{
-            var file_links = this.parser.getFileLinks(folder_id);
-            store.addFolder(folder_id, file_links)
+            var folder = this.parser.getFolder();
+            store.addFolder(folder)
         }
     }
 
@@ -295,14 +318,11 @@ class Pages{
     }
 
     playback(){
-        var player_container = new Player(this.parser);
-        player_container.init();
+        var player_container = new Player();
 
         var current_file = store.getFile(this.parser.getCurrentFileId(), this.parser.getFolderId())
 
         store.setLastFile(current_file);
-
-        //resume playback and register event listener
 
 
         // button container
