@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.75
+// @version      0.72
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -15,13 +15,13 @@ class Store {
 
         // used to filter files that are supposed to be opend
         var whitelist_items = [
-        ".mkv$",
-        ".avi$",
-        ".mov$",
-        ".mp4$",
-        ".wmv$",
-        ".m4v$",
-        ".mpeg$"
+            ".mkv$",
+            ".avi$",
+            ".mov$",
+            ".mp4$",
+            ".wmv$",
+            ".m4v$",
+            ".mpeg$"
         ];
         this.whitelist = new RegExp(whitelist_items.join("|"), "i");
     }
@@ -44,9 +44,9 @@ class Store {
             console.log('added',files.length, 'files')
 
             all_folders[folder_id] = {
-            'files': files,
-            'name': 'test',
-            'url': 'http://test.com'
+                'files': files,
+                'name': 'test',
+                'url': 'http://test.com'
             }
             this.setFiles(all_folders)
         }else{
@@ -141,9 +141,9 @@ class Store {
     }
 }
 
-/**
-Player wrapper
-**/
+/*
+* Player wrapper
+*/
 class Player {
     constructor(){
         this.parser = new Parser()
@@ -187,9 +187,9 @@ class Player {
     }
 }
 
-/**
-   Parsing the elemnts and returning
-**/
+/*
+*  Parsing the elemnts and returning
+*/
 class Parser {
     getCurrentFileId(){
         return document.URL.match(/\/file\?id=(\S*)/)[1];
@@ -200,7 +200,7 @@ class Parser {
     getFolderId(){
         var breadcrumb = this.getBreadcrumb()
         var id = breadcrumb[breadcrumb.length-4].firstChild.getAttribute("href")
-            .match(/folder_id=(\S*)/)[1];
+        .match(/folder_id=(\S*)/)[1];
 
         return id
     }
@@ -212,7 +212,7 @@ class Parser {
         return document.getElementById('player_html5_api');
     }
     getPlayer(){
-        return player;
+        return window.player;
     }
 
     markFilesFinished(finished_ids){
@@ -223,8 +223,8 @@ class Parser {
             if(finished_ids.has(id)){
                 element.style.textDecoration = 'line-through'
             }
-         })
-   }
+        })
+    }
 
     getFileLinks(folder_id){
         var file_links = [];
@@ -269,9 +269,9 @@ class Parser {
 
 
 
-/**
-** The Pages
-**/
+/*
+* The Pages
+*/
 class Pages{
     constructor(){
         this.parser = new Parser()
@@ -351,8 +351,10 @@ class Pages{
     }
 }
 
+/*
+* Utils
+*/
 class Utils{
-    /** Utils **/
     static async waitFor(sel){
         while(!document.querySelector(sel)) {
             await new Promise(r => setTimeout(r, 500));
