@@ -7,7 +7,7 @@ A userscript that adds some convinience functions to the premiumize.me file view
 - Autoplay next video if available
 - save current time and resume on time if file is reopend
 
-### planned
+### Future Ideas
   - use greasemoney to save and syn storage
 
 ## Installation
