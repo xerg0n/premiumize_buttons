@@ -22,6 +22,10 @@ A userscript that adds some convinience functions to the premiumize.me file view
 - the main page should now contain a 'reopen last' button
 
 ## Changelog
+### 0.8
+* adjusted to content changess
+* cleanup
+* implemented maybe next button that looks for files outside the current folder based on a sorted string list
 ### 0.4
 * code cleanup
 * moved db to sets
