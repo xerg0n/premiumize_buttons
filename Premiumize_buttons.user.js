@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.80
+// @version      0.81
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -38,10 +38,10 @@ class Store {
         return file;
     }
     hasFolder(folder_id){
-        return (folder_id in this.getAllFolders())
+        return (folder_id in this.getFolders())
     }
     addFolderOld(folder_id, files) {
-        var all_folders = this.getAllFolders()
+        var all_folders = this.getFolders()
 
         if (!this.hasFolder(folder_id)){
             console.log('added',files.length, 'files')
@@ -57,7 +57,7 @@ class Store {
         }
     }
     addFolder(folder){
-        var all_folders = this.getAllFolders()
+        var all_folders = this.getFolders()
         if (!this.hasFolder(folder.id)){
             all_folders[folder.id] = folder
             this.setFiles(all_folders)
@@ -66,20 +66,20 @@ class Store {
         }
     }
     getFolder(folder_id) {
-        return this.getAllFolders()[folder_id];
+        return this.getFolders()[folder_id];
     }
 
     getFile(id, folder_id=null){
         if (folder_id){
-            console.log(this.getAllFolders()[folder_id])
-            return this.getAllFolders()[folder_id].files.filter(file => file.id == id)[0];
+            console.log(this.getFolders()[folder_id])
+            return this.getFolders()[folder_id].files.filter(file => file.id == id)[0];
         }else{
             return this.getFileFromAll(id);
         }
     }
 
     getFileFromAll(fileid) {
-        var folders = this.getAllFolders();
+        var folders = this.getFolders();
         for (var key in folders) {
             if (folders.hasOwnProperty(key)) {
                 var id = folders[key].files.findIndex((db_file) => db_file.id == fileid);
@@ -89,6 +89,15 @@ class Store {
             }
         }
     }
+
+    getPotentialNext(id, filter=this.whitelist){
+        // get all files
+       var sorted_files = this.getFiles()
+            .sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1)
+            .filter(file => file.name.match(this.whitelist));
+       var idx = sorted_files.findIndex( (element, index, array) => element.id == id);
+       return sorted_files[idx+1];
+     }
 
     getNext(folder_id, id, filter=this.whitelist) {
         var folder_files = this.getFolder(folder_id, filter=filter).files
@@ -116,13 +125,17 @@ class Store {
         }
     }
 
-    getAllFolders(){
+    getFolders(){
         var files = JSON.parse(localStorage.getItem(this.key_main));
         if (files == null){
             files = {};
         }
         return files
     }
+    getFiles(){
+        var folders = this.getFolders();
+        return Object.keys(folders).map(x=> folders[x].files).flat();
+        }
 
     setFiles(files){
         var ser_files = JSON.stringify(files);
@@ -130,7 +143,7 @@ class Store {
     }
 
     updateFile(file){
-        var all_folders = this.getAllFolders()
+        var all_folders = this.getFolders()
         for (var key in all_folders) {
             if (all_folders.hasOwnProperty(key)) {
                 var id = all_folders[key].files.findIndex((db_file) => db_file.id == file.id);
@@ -353,12 +366,21 @@ async function main(){
 
 
             // add buttons
+            var btn_next;
             if (next_file){
                 player_container.setNext(next_file);
 
-                var btn_next = Utils.makeButton("Next Episode", next_file)
+                btn_next = Utils.makeButton("Next Episode", next_file)
                 btn_next.style.float = "right";
                 container.appendChild(btn_next);
+            }else{
+                var maybe_next = store.getPotentialNext(current_file.id);
+                if (maybe_next){
+                    player_container.setNext(maybe_next);
+                    btn_next = Utils.makeButton("Maybe Next Episode", maybe_next)
+                    btn_next.style.float = "right";
+                    container.appendChild(btn_next);
+                }
             }
             if (prev_file){
                 var btn_prev = Utils.makeButton("Prev Episode", prev_file)
