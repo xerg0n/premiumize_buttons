@@ -1,13 +1,16 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.72
+// @version      0.80
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
 // @grant        none
 // ==/UserScript==
 
+/*
+Access to the stored Data
+*/
 class Store {
     constructor() {
         this.key_main = "folders"
@@ -146,17 +149,24 @@ class Store {
 */
 class Player {
     constructor(){
-        this.parser = new Parser()
-        console.log(this.parser.getFolderId())
-        this.current_file = store.getFile(this.parser.getCurrentFileId(), this.parser.getFolderId())
+        this.parser = new Parser();
+        var file_id = this.parser.getCurrentFileId();
+        var folder_id = this.parser.getFolderId();
+
+        this.store = new Store();
+        this.current_file = this.store.getFile(file_id, folder_id);
         this.player = this.parser.getPlayer();
-        this.playerElement = this.parser.getPlayerElement()
-        this.restoreTime()
-        this.registerListeners()
+        this.playerElement = this.parser.getPlayerElement();
+        this.restoreTime();
+        this.registerListeners();
     }
     registerListeners(){
-        this.playerElement.addEventListener("timeupdate", this.timechange.bind(this), true);
-        this.playerElement.addEventListener("ended", this.ended.bind(this),true);
+        this.playerElement.addEventListener("timeupdate",
+                                            this.timechange.bind(this),
+                                            true);
+        this.playerElement.addEventListener("ended",
+                                            this.ended.bind(this),
+                                            true);
     }
     timechange(){
         console.log('[Player] timeupdate')
@@ -165,7 +175,7 @@ class Player {
         if (this.player.remainingTime() < 120){
             this.current_file.finished = true
         }
-        store.updateFile(this.current_file);
+        this.store.updateFile(this.current_file);
     }
     restoreTime(){
         if (this.current_file.time){
@@ -179,7 +189,7 @@ class Player {
         // set time to 0
         this.current_file.time = 0
         this.current_file.finished = true
-        store.updateFile(this.current_file);
+        this.store.updateFile(this.current_file);
 
         if (this.next_file){
             location.href = "/file?id="+this.next_file.id
@@ -188,7 +198,7 @@ class Player {
 }
 
 /*
-*  Parsing the elemnts and returning
+*  Parsing the elemnts and returning data
 */
 class Parser {
     getCurrentFileId(){
@@ -216,7 +226,6 @@ class Parser {
     }
 
     markFilesFinished(finished_ids){
-        console.log(finished_ids)
         Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
             var element = el.parentNode.children[2]
             var id = element.getAttribute('href').replace("/file?id=","");
@@ -226,27 +235,29 @@ class Parser {
         })
     }
 
-    getFileLinks(folder_id){
+    parseFileLinks(folder_id){
         var file_links = [];
-        Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
+        var elements = document.querySelectorAll(".fa-file-alt");
+        console.log('[parser] found '+elements.length+' files')
+        Array.prototype.forEach.call(elements, function(el) {
             var file = {
                 name: null,
                 id: null,
                 time: 0,
                 folder_id: folder_id
             };
-            var element = el.parentNode.children[2];
+            var element = el.parentNode.parentNode;
             file.id = element.getAttribute('href').replace("/file?id=","");
-            file.name = element.text;
+            file.name = element.querySelector('div span:nth-child(3)').innerText;
             file_links.push(file);
         })
         return file_links;
     }
-    getFolder(){
+    parseFolder(){
         var id = this.getFolderIdFromUri();
         var bread = this.getBreadcrumb()
         var folder = {
-            files: this.getFileLinks(id),
+            files: this.parseFileLinks(id),
             name: bread[bread.length-1].innerText,
             url: bread[bread.length-1].baseURI,
             id: id,
@@ -257,7 +268,7 @@ class Parser {
         if (/folder_id=/.test(document.URL)){
             return 'folder'
         }
-        if (/downloader/.test(document.URL)){
+        if (/transfers/.test(document.URL)){
             return 'downloader'
         }
         if (/file\?id=/.test(document.URL)){
@@ -267,97 +278,13 @@ class Parser {
     }
 }
 
-
-
-/*
-* The Pages
-*/
-class Pages{
-    constructor(){
-        this.parser = new Parser()
-        var current_page = this.parser.currentPage()
-        console.log(current_page)
-        switch (current_page){
-            case 'folder':
-                Utils.waitFor(".glyphicon-file").then(this.folder.bind(this),true);
-                break
-            case 'downloader':
-                Utils.waitFor(".btn-primary").then(this.downloader.bind(this),true);
-                break
-            case 'playback':
-                Utils.waitFor(".vjs-control-bar").then(this.playback.bind(this), true);
-                break
-            default:
-                console.log('unknown page')
-                break
-        }
-    }
-
-    folder(){
-        var folder_id = this.parser.getFolderIdFromUri();
-        if (store.hasFolder(folder_id)){
-            var ids = new Set()
-            store.getFolder(folder_id).files.forEach((f) => f.finished && ids.add(f.id))
-            this.parser.markFilesFinished(ids)
-        }else{
-            var folder = this.parser.getFolder();
-            store.addFolder(folder)
-        }
-    }
-
-    downloader(){
-        var lastFile = store.getLastFile();
-        var btn_cont = Utils.makeButton("Reopen last", lastFile);
-
-        btn_cont.innerHTML = '<span class="glyphicon glyphicon glyphicon-chevron-right"></span>'
-            +'<span>Reopen last</span>';
-        btn_cont.style = "margin-left: 6px";
-
-        var container = document.querySelectorAll('[data-reactid=".0.1.0"]')[0];
-        container.appendChild(btn_cont);
-    }
-
-    playback(){
-        var player_container = new Player();
-
-        var current_file = store.getFile(this.parser.getCurrentFileId(), this.parser.getFolderId())
-
-        store.setLastFile(current_file);
-
-
-        // button container
-        var container = document.createElement('div');
-        container.style.height = "40px";
-
-        var next_file = store.getNext(this.parser.getFolderId(), this.parser.getCurrentFileId())
-        var prev_file = store.getPrev(this.parser.getFolderId(), this.parser.getCurrentFileId())
-
-
-        // add buttons
-        if (next_file){
-            player_container.setNext(next_file);
-
-            var btn_next = Utils.makeButton("Next Episode", next_file)
-            btn_next.style.float = "right";
-            container.appendChild(btn_next);
-        }
-        if (prev_file){
-            var btn_prev = Utils.makeButton("Prev Episode", prev_file)
-            container.appendChild(btn_prev);
-        }
-
-        var main_container = document.getElementsByClassName('container')[0];
-        main_container.insertBefore(container, main_container.childNodes[4]);
-    }
-}
-
 /*
 * Utils
 */
 class Utils{
     static async waitFor(sel){
         while(!document.querySelector(sel)) {
-            await new Promise(r => setTimeout(r, 500));
+            return new Promise(r => setTimeout(r, 500));
         }
     }
 
@@ -372,6 +299,79 @@ class Utils{
     }
 }
 
+async function main(){
+    var store = new Store();
+    var parser = new Parser();
+    var page = parser.currentPage();
 
-var store = new Store();
-var pages = new Pages();
+    switch (page){
+        case 'folder':
+            await Utils.waitFor(".glyphicon-file");
+            var folder_id = parser.getFolderIdFromUri();
+            console.log('[folder] id:'+folder_id)
+            if (store.hasFolder(folder_id)){
+                console.log('[folder] marking files')
+                var ids = new Set()
+                store.getFolder(folder_id).files
+                    .forEach((f) => f.finished && ids.add(f.id))
+                parser.markFilesFinished(ids)
+            }else{
+                var folder = parser.parseFolder();
+                store.addFolder(folder)
+            }
+            break
+        case 'downloader':
+            await Utils.waitFor(".btn-primary");
+            var lastFile = store.getLastFile();
+            var btn_cont = Utils.makeButton("Reopen last", lastFile);
+
+            btn_cont.innerHTML = '<span class="glyphicon glyphicon glyphicon-chevron-right"></span>'
+                +'<span>Reopen last</span>';
+            btn_cont.style = "margin-left: 6px";
+
+            var container = document.querySelectorAll('[data-reactid=".0.1.0"]')[0];
+            container.appendChild(btn_cont);
+            break
+        case 'playback':
+            await Utils.waitFor(".vjs-control-bar");
+            var player_container = new Player(store);
+
+            var current_file = store.getFile(parser.getCurrentFileId(),
+                                             parser.getFolderId())
+
+            store.setLastFile(current_file);
+
+
+            // button container
+            container = document.createElement('div');
+            container.style.height = "40px";
+
+            var next_file = store.getNext(parser.getFolderId(),
+                                          parser.getCurrentFileId())
+            var prev_file = store.getPrev(parser.getFolderId(),
+                                          parser.getCurrentFileId())
+
+
+            // add buttons
+            if (next_file){
+                player_container.setNext(next_file);
+
+                var btn_next = Utils.makeButton("Next Episode", next_file)
+                btn_next.style.float = "right";
+                container.appendChild(btn_next);
+            }
+            if (prev_file){
+                var btn_prev = Utils.makeButton("Prev Episode", prev_file)
+                container.appendChild(btn_prev);
+            }
+
+            var main_container = document.getElementsByClassName('container')[0];
+            main_container.insertBefore(container, main_container.childNodes[4]);
+            break
+        default:
+            console.log('unknown page')
+            break
+    }
+
+};
+main();
