@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.86
+// @version      0.87
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -24,7 +24,13 @@ class Store {
             ".mp4$",
             ".wmv$",
             ".m4v$",
-            ".mpeg$"
+            ".mpeg$",
+            //audio
+            ".mp3$",
+            ".wav$",
+            ".acc$",
+            ".m4a$",
+            ".wma$",
         ];
         this.whitelist = new RegExp(whitelist_items.join("|"), "i");
     }
@@ -73,7 +79,7 @@ class Store {
         }
     }
 
-    getPotentialNext(id, filter=this.whitelist){
+    getNextFile(id, filter=this.whitelist){
         // get all files
        var sorted_files = this.getFiles()
             .sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1)
@@ -81,6 +87,18 @@ class Store {
        var idx = sorted_files.findIndex( (element, index, array) => element.id == id);
        return sorted_files[idx+1];
     }
+
+    getNextFolder(id){
+        // get all files
+        var folders = Object.values(this.getFolders())
+                         .filter(folder => folder.files
+                                 .filter( file => file.name.match(this.whitelist)).length > 0);
+        var sorted = folders.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1)
+        console.log(sorted)
+        var idx = sorted.findIndex( (element, index, array) => element.id == id);
+        return sorted[idx+1];
+    }
+
 
     getNext(folder_id, id, filter=this.whitelist) {
         var folder_files = this.getFolder(folder_id, filter=filter).files
@@ -280,7 +298,14 @@ class Parser {
         return 'unknown'
     }
 }
-
+class Logger{
+    context(new_context){
+        this.context = new_context
+    }
+    log(message){
+       console.log("["+this.context+"] ", message)
+    }
+}
 /*
 * Utils
 */
@@ -303,6 +328,7 @@ class Utils{
 }
 
 async function main(){
+    var logger = new Logger();
     var store = new Store();
     var parser = new Parser();
     var page = parser.currentPage();
@@ -310,6 +336,7 @@ async function main(){
     switch (page){
         case 'folder':
             await Utils.waitFor(".glyphicon-file");
+            logger.context = 'folder'
             var folder_id = parser.getFolderIdFromUri();
             console.log('[folder] id:'+folder_id)
             if (store.hasFolder(folder_id)){
@@ -325,6 +352,7 @@ async function main(){
             break
         case 'downloader':
             await Utils.waitFor(".btn-primary");
+            logger.context = 'downloader'
             var lastFile = store.getLastFile();
             var btn_cont = Utils.makeButton("Reopen last", lastFile);
 
@@ -337,6 +365,7 @@ async function main(){
             break
         case 'playback':
             await Utils.waitFor(".vjs-control-bar");
+            logger.context = 'playback'
             var player_container = new Player(store);
 
             var current_file = store.getFile(parser.getCurrentFileId(),
@@ -347,45 +376,47 @@ async function main(){
 
             // button container
             container = document.createElement('div');
-            container.style.height = "40px";
+            container.style = "margin-bottom: 5px";
 
             var next_file = store.getNext(parser.getFolderId(),
                                           parser.getCurrentFileId())
             var prev_file = store.getPrev(parser.getFolderId(),
                                           parser.getCurrentFileId())
-
-
-            // add buttons
             var btn_next;
+            if (prev_file){
+                var btn_prev = Utils.makeButton("🡄", prev_file,
+                                                style='border-radius: 20px;')
+                container.appendChild(btn_prev);
+            }
             if (next_file){
                 player_container.setNext(next_file);
 
-                btn_next = Utils.makeButton("Next Episode", next_file)
+                btn_next = Utils.makeButton("🡆", next_file,
+                                            style='border-radius: 20px;')
                 btn_next.style.float = "right";
                 container.appendChild(btn_next);
             }else{
                 // insert buttons for next episode
-                var maybe_next = store.getPotentialNext(current_file.id);
+                var maybe_next = store.getNextFile(current_file.id);
+                var maybe_next_folder = store.getNextFolder(parser.getFolderId());
+
+                var btn_style = 'background-color:rgb(63, 67, 70); float:right; margin-right: 2px; '
+
                 if (maybe_next){
-                    player_container.setNext(maybe_next);
-                    var style = 'background-color:rgb(63, 67, 70); float:right;'
-                    btn_next = Utils.makeButton("Next Episode?",
+                    //player_container.setNext(maybe_next);
+                    var btn_file = Utils.makeButton("Next File?",
                                                 maybe_next,
-                                                style=style)
-                    //cdropdown = document.createElement('div');
-                    //cdropdown.style = "display: flex; float: right; flex-direction:column;"
-                    container.style.height = "40px";
-                    //cdropdown.appendChild(asdf1)
-                    //cdropdown.appendChild(asdf2)
-
-
-                    //container.appendChild(cdropdown);
-                    container.appendChild(btn_next);
+                                                style=btn_style)
+                    container.appendChild(btn_file);
+                    //container.appendChild(btn_next);
                 }
-            }
-            if (prev_file){
-                var btn_prev = Utils.makeButton("Prev Episode", prev_file)
-                container.appendChild(btn_prev);
+                if (maybe_next_folder){
+                    var btn_folder = Utils.makeButton("Next Folder?",
+                                                maybe_next_folder.files[0],
+                                                style=btn_style)
+                    container.appendChild(btn_folder);
+                    //container.appendChild(btn_next);
+                }
             }
 
             var main_container = document.getElementsByClassName('container')[1];
