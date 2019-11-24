@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.81
+// @version      0.82
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -40,22 +40,6 @@ class Store {
     hasFolder(folder_id){
         return (folder_id in this.getFolders())
     }
-    addFolderOld(folder_id, files) {
-        var all_folders = this.getFolders()
-
-        if (!this.hasFolder(folder_id)){
-            console.log('added',files.length, 'files')
-
-            all_folders[folder_id] = {
-                'files': files,
-                'name': 'test',
-                'url': 'http://test.com'
-            }
-            this.setFiles(all_folders)
-        }else{
-            console.log('folder already saved')
-        }
-    }
     addFolder(folder){
         var all_folders = this.getFolders()
         if (!this.hasFolder(folder.id)){
@@ -71,7 +55,6 @@ class Store {
 
     getFile(id, folder_id=null){
         if (folder_id){
-            console.log(this.getFolders()[folder_id])
             return this.getFolders()[folder_id].files.filter(file => file.id == id)[0];
         }else{
             return this.getFileFromAll(id);
@@ -97,7 +80,7 @@ class Store {
             .filter(file => file.name.match(this.whitelist));
        var idx = sorted_files.findIndex( (element, index, array) => element.id == id);
        return sorted_files[idx+1];
-     }
+    }
 
     getNext(folder_id, id, filter=this.whitelist) {
         var folder_files = this.getFolder(folder_id, filter=filter).files
@@ -237,33 +220,40 @@ class Parser {
     getPlayer(){
         return window.player;
     }
-
-    markFilesFinished(finished_ids){
-        Array.prototype.forEach.call(document.querySelectorAll(".glyphicon-file"), function(el) {
-            var element = el.parentNode.children[2]
+    * elementparser(){
+        var icon_sel = ".fa-file-alt"
+        var folder_id = this.getFolderIdFromUri();
+        var icon_elements = document.querySelectorAll(".fa-file-alt");
+        for (var icon_el of icon_elements){
+            var element = icon_el.parentNode.parentNode
+            var text = element.querySelector('div span:nth-child(3)');
             var id = element.getAttribute('href').replace("/file?id=","");
-            if(finished_ids.has(id)){
-                element.style.textDecoration = 'line-through'
+            yield {
+                main: element,
+                text: text,
+                id: element.getAttribute('href').replace("/file?id=","")
+            };
+        }
+    }
+    markFilesFinished(finished_ids){
+        for (var parsed of this.elementparser()){
+            if(finished_ids.has(parsed.id)){
+                parsed.text.style.textDecoration = 'line-through'
             }
-        })
+        }
     }
 
     parseFileLinks(folder_id){
         var file_links = [];
-        var elements = document.querySelectorAll(".fa-file-alt");
-        console.log('[parser] found '+elements.length+' files')
-        Array.prototype.forEach.call(elements, function(el) {
+        for (var parsed of this.elementparser()){
             var file = {
-                name: null,
-                id: null,
+                name: parsed.text.innerText,
+                id: parsed.id,
                 time: 0,
-                folder_id: folder_id
+                folder_id: folder_id,
             };
-            var element = el.parentNode.parentNode;
-            file.id = element.getAttribute('href').replace("/file?id=","");
-            file.name = element.querySelector('div span:nth-child(3)').innerText;
             file_links.push(file);
-        })
+        }
         return file_links;
     }
     parseFolder(){
@@ -300,7 +290,6 @@ class Utils{
             return new Promise(r => setTimeout(r, 500));
         }
     }
-
 
     static makeButton(text, file){
         var btn = document.createElement('a');
