@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.85
+// @version      0.86
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -379,7 +379,7 @@ async function main(){
                     //cdropdown.appendChild(asdf2)
 
 
-                    container.appendChild(cdropdown);
+                    //container.appendChild(cdropdown);
                     container.appendChild(btn_next);
                 }
             }
