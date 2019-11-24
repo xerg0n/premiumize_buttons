@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Premiumize.me Next File Button
 // @namespace    http://tampermonkey.net/
-// @version      0.82
+// @version      0.85
 // @description  Adds a next and previous button to the premiumize.me file preview page
 // @author       xerg0n
 // @match        https://www.premiumize.me/*
@@ -291,10 +291,11 @@ class Utils{
         }
     }
 
-    static makeButton(text, file){
+    static makeButton(text, file, style=null){
         var btn = document.createElement('a');
         btn.className = "btn btn-primary";
         btn.innerText = text
+        btn.style = 'font-size:10px;'+style
         btn.setAttribute("href","/file?id="+file.id);
         btn.title = file.name;
         return btn
@@ -363,11 +364,22 @@ async function main(){
                 btn_next.style.float = "right";
                 container.appendChild(btn_next);
             }else{
+                // insert buttons for next episode
                 var maybe_next = store.getPotentialNext(current_file.id);
                 if (maybe_next){
                     player_container.setNext(maybe_next);
-                    btn_next = Utils.makeButton("Maybe Next Episode", maybe_next)
-                    btn_next.style.float = "right";
+                    var style = 'background-color:rgb(63, 67, 70); float:right;'
+                    btn_next = Utils.makeButton("Next Episode?",
+                                                maybe_next,
+                                                style=style)
+                    //cdropdown = document.createElement('div');
+                    //cdropdown.style = "display: flex; float: right; flex-direction:column;"
+                    container.style.height = "40px";
+                    //cdropdown.appendChild(asdf1)
+                    //cdropdown.appendChild(asdf2)
+
+
+                    container.appendChild(cdropdown);
                     container.appendChild(btn_next);
                 }
             }
@@ -376,8 +388,8 @@ async function main(){
                 container.appendChild(btn_prev);
             }
 
-            var main_container = document.getElementsByClassName('container')[0];
-            main_container.insertBefore(container, main_container.childNodes[4]);
+            var main_container = document.getElementsByClassName('container')[1];
+            main_container.insertBefore(container, main_container.childNodes[5]);
             break
         default:
             console.log('unknown page')
